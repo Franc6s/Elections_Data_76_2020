@@ -1,78 +1,103 @@
--- created a table
+-- 1. Create the table
 CREATE TABLE presidential_election_ (
-	year_	int4,
-	state_	varchar (20),
-	state_po	varchar(2),
-	candidate	text,
-	party_detailed	varchar,
-	candidate_vote	int
+    year_ INT,
+    state_ VARCHAR(50),
+    state_po VARCHAR(2),
+    candidate TEXT,
+    party_detailed VARCHAR(100),
+    candidate_vote INT
 );
--- to see the data output
-SELECT * FROM presidential_election_;
 
---to get the total number of candidate and the year in which they run for election
-SELECT DISTINCT candidate, year_ FROM presidential_election_
-ORDER BY candidate ASC;
+-- 2. Preview data
+SELECT * FROM presidential_election_ LIMIT 100;
 
+-- 3. Get distinct candidates and the years they ran
+SELECT DISTINCT candidate, year_
+FROM presidential_election_
+WHERE candidate IS NOT NULL
+ORDER BY candidate, year_;
+
+-- 4. All results for a specific candidate (example: Ronald Reagan)
 SELECT year_,
-	state_,
-	candidate,
-	candidate_vote
+       state_,
+       candidate,
+       candidate_vote
 FROM presidential_election_
--- added a space because in the file, data have a space in front of them
-WHERE candidate = 'RONALD REAGAN'
+WHERE TRIM(candidate) = 'RONALD REAGAN'
+ORDER BY year_, state_;
 
---to calculate the candidate with the highest vote ever with the state
-SELECT DISTINCT candidate,
-	state_,
-	candidate_vote,
-	year_
+-- 5. Candidate with the highest vote ever (single state/year)
+SELECT candidate,
+       state_,
+       candidate_vote,
+       year_
 FROM presidential_election_
-WHERE candidate_vote = (SELECT MAX(candidate_vote) FROM presidential_election_);
+WHERE candidate_vote = (
+    SELECT MAX(candidate_vote) FROM presidential_election_
+)
+ORDER BY year_ DESC;
 
---to calculate the candidate with the lowest value
-SELECT DISTINCT candidate,
-	state_,
-	candidate_vote,
-	year_
+-- 6. Candidate with the lowest vote ever (excluding 0s/nulls)
+SELECT candidate,
+       state_,
+       candidate_vote,
+       year_
 FROM presidential_election_
-WHERE candidate_vote = (SELECT MIN(candidate_vote) FROM presidential_election_);
+WHERE candidate_vote = (
+    SELECT MIN(candidate_vote) FROM presidential_election_
+    WHERE candidate_vote > 0
+)
+ORDER BY year_;
 
--- to calculate candidate with votes higher than 3 million votes
-SELECT DISTINCT candidate,
-	state_,
-	candidate_vote,
-	year_
+-- 7. Candidates with more than 3 million votes in a state
+SELECT candidate,
+       state_,
+       candidate_vote,
+       year_
 FROM presidential_election_
 WHERE candidate_vote > 3000000
-ORDER BY year_
+ORDER BY year_, candidate_vote DESC;
 
---to calculate the state with the lowest vote for each election year, per state and the candidate
+-- 8. Extremely low votes per candidate (< 40)
 SELECT state_,
-	year_,
-	candidate,
-	candidate_vote
+       year_,
+       candidate,
+       candidate_vote
 FROM presidential_election_
 WHERE candidate_vote < 40
-ORDER BY candidate_vote
+ORDER BY candidate_vote ASC, year_;
 
---to calculate the total vote per candidate for each election year and identify the winner
-SELECT DISTINCT candidate,year_,
-SUM(candidate_vote)AS total_Vote
+-- 9. Total votes per candidate in a specific year (e.g., 2012)
+SELECT candidate,
+       year_,
+       SUM(candidate_vote) AS total_vote
 FROM presidential_election_
-WHERE year_=2012
-GROUP BY candidate,year_
-ORDER BY total_Vote DESC;
+WHERE year_ = 2012
+GROUP BY candidate, year_
+ORDER BY total_vote DESC;
 
-SELECT candidate,candidate_vote,state_,
-SUM(candidate_vote)AS total_Vote
+-- 10. Votes per candidate per state (e.g., 1980)
+SELECT candidate,
+       state_,
+       SUM(candidate_vote) AS total_vote
 FROM presidential_election_
-WHERE year_=1980
-GROUP BY candidate,candidate_vote,state_
-ORDER BY Candidate DESC;
+WHERE year_ = 1980
+GROUP BY candidate, state_
+ORDER BY candidate ASC;
 
-SELECT candidate, (total/total_vote)*100 AS vote_percent,FROM presidential_election;
-
+-- 11. Vote percentage per candidate per year
+SELECT 
+    year_,
+    candidate,
+    SUM(candidate_vote) AS total_candidate_votes,
+    ROUND(
+        (SUM(candidate_vote) * 100.0) / 
+        SUM(SUM(candidate_vote)) OVER (PARTITION BY year_), 2
+    ) AS vote_percent
+FROM presidential_election_
+WHERE candidate IS NOT NULL AND candidate_vote > 0
+GROUP BY year_, candidate
+ORDER BY year_, vote_percent DESC;
 
 
 
